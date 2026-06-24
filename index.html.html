@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juegan Todos Con CTCT - Haxball Club</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body {
+            background-color: #06070d;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(127, 255, 0, 0.2);
+            border: 1px solid rgba(127, 255, 0, 0.4);
+        }
+        .neon-text {
+            text-shadow: 0 0 10px rgba(127, 255, 0, 0.6);
+            color: #7FFF00;
+        }
+        .bg-dark-card {
+            background-color: #0f111a;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #06070d; }
+        ::-webkit-scrollbar-thumb { background: #7FFF00; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative">
+
+    <header class="bg-dark-card border-b border-gray-800 sticky top-0 z-40 px-4 py-3 shadow-xl">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <img src="ctcticon.png" alt="CTCT Logo" class="w-12 h-12 object-contain rounded-lg border border-lime-500 shadow-[0_0_10px_rgba(127,255,0,0.3)]">
+                <div>
+                    <h1 class="text-xl font-black tracking-wider text-white">JUEGAN TODOS CON <span class="neon-text">CTCT</span></h1>
+                    <p class="text-xs text-gray-400">☄️ Sala Oficial de Haxball ☄️</p>
+                </div>
+            </div>
+            <div id="room-status-badge" class="flex items-center gap-2 bg-red-950/40 text-red-400 border border-red-800 px-4 py-1.5 rounded-full text-sm font-bold animate-pulse">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> OFFLINE
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 w-full grid grid-cols-1 lg:grid-cols-3 gap-6 my-auto z-10">
+        
+        <div class="space-y-6 flex flex-col">
+            <div class="bg-dark-card p-5 rounded-2xl border border-gray-800 shadow-2xl flex-1 flex flex-col justify-between">
+                <h2 class="text-xs uppercase font-bold tracking-widest text-gray-400 mb-3"><i class="fa-solid fa-gamepad text-lime-400 mr-2"></i> Partido en Curso</h2>
+                <div id="live-match-box" class="text-center py-6">
+                    <p class="text-gray-500 text-sm italic mb-2">No hay ningún partido activo en este momento</p>
+                    <div class="flex items-center justify-center gap-6 font-black text-3xl">
+                        <span class="text-red-500">RED</span>
+                        <span class="bg-gray-800 px-4 py-2 rounded-xl text-white">0 - 0</span>
+                        <span class="text-blue-500">BLUE</span>
+                    </div>
+                </div>
+                <a href="https://html5.haxball.com/" target="_blank" class="w-full bg-gradient-to-r from-lime-600 to-green-500 text-black font-extrabold text-center py-3 rounded-xl hover:from-lime-500 hover:to-green-400 transition transform hover:-translate-y-0.5 shadow-lg shadow-lime-900/20">
+                    <i class="fa-solid fa-play mr-2"></i> ENTRAR A JUGAR AHORA
+                </a>
+            </div>
+
+            <div class="bg-dark-card p-5 rounded-2xl border border-gray-800 shadow-2xl">
+                <h3 class="text-sm font-bold text-white mb-3"><i class="fa-brands fa-discord text-indigo-400 mr-2"></i> Comunidad Oficial</h3>
+                <p class="text-gray-400 text-sm mb-4">Unite al Discord para enterarte de torneos, cambios de script y las repeticiones guardadas.</p>
+                <a href="https://discord.gg/tW8fdYSrjY" target="_blank" class="flex items-center justify-center gap-2 bg-[#5865F2] text-white font-bold py-3 rounded-xl hover:bg-[#4752C4] transition shadow-lg">
+                    <i class="fa-brands fa-discord text-xl"></i> UNIRSE AL DISCORD
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-dark-card p-5 rounded-2xl border border-gray-800 shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm uppercase font-bold tracking-widest text-white"><i class="fa-solid fa-trophy text-amber-400 mr-2"></i> Top Ranking ELO</h2>
+                <span class="text-xs text-lime-400 bg-lime-950/50 border border-lime-800/60 px-2 py-0.5 rounded font-mono">En Vivo</span>
+            </div>
+            <div class="overflow-y-auto max-h-[360px] flex-1 pr-1">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-xs uppercase text-gray-500 border-b border-gray-800">
+                            <th class="pb-2 font-medium">Pos</th>
+                            <th class="pb-2 font-medium">Jugador</th>
+                            <th class="pb-2 font-medium text-right">ELO</th>
+                            <th class="pb-2 font-medium text-right">Goles</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="divide-y divide-gray-900 text-sm">
+                        <tr>
+                            <td colspan="4" class="text-center py-8 text-gray-500 italic">Cargando estadísticas globales...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-dark-card p-5 rounded-2xl border border-gray-800 shadow-2xl flex flex-col h-[480px]">
+            <div class="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+                <h2 class="text-sm uppercase font-bold tracking-widest text-white"><i class="fa-solid fa-comments text-cyan-400 mr-2"></i> Chat en Vivo</h2>
+                <span class="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded font-mono">Room Feed</span>
+            </div>
+            <div id="chat-messages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-sm flex flex-col justify-end">
+                <p class="text-gray-600 text-xs italic text-center my-auto">No hay mensajes recientes en la sala.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <section class="max-w-7xl mx-auto p-4 w-full mb-6 z-10">
+        <div class="bg-dark-card p-5 rounded-2xl border border-gray-800 shadow-2xl">
+            <h2 class="text-sm uppercase font-bold tracking-widest text-white mb-4"><i class="fa-solid fa-cloud-arrow-down text-purple-400 mr-2"></i> Historial de Partidos y Repeticiones (.hbr2)</h2>
+            <div id="replays-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-[#090b11] p-4 rounded-xl border border-gray-800 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-bold text-white">Canal de Repeticiones</p>
+                        <p class="text-xs text-gray-500">Auto-subidas vía Webhook</p>
+                    </div>
+                    <a href="https://discord.gg/tW8fdYSrjY" target="_blank" class="bg-purple-950/60 hover:bg-purple-900 border border-purple-800 text-purple-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                        <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Ver en Discord
+                    </a>
+                </div>
+                <div class="bg-[#090b11] p-4 rounded-xl border border-gray-800 flex items-center justify-between opacity-50">
+                    <p class="text-xs text-gray-500 italic py-1">Guardando grabaciones en vivo...</p>
+                </div>
+                <div class="bg-[#090b11] p-4 rounded-xl border border-gray-800 flex items-center justify-between opacity-50">
+                    <p class="text-xs text-gray-500 italic py-1">Esperando datos...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+        <div id="ai-chat-window" class="hidden w-80 h-96 bg-[#0f111a] border border-lime-500/40 rounded-2xl shadow-2xl flex-col overflow-hidden mb-3 transition-all duration-300">
+            <div class="bg-gradient-to-r from-lime-950 to-gray-900 p-3 border-b border-gray-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 rounded-full bg-lime-500 animate-ping absolute"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-lime-500 relative"></div>
+                    <span class="text-xs font-black tracking-wider text-white">SOPORTE IA CTCT</span>
+                </div>
+                <button onclick="toggleAIChat()" class="text-gray-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="ai-chat-body" class="flex-1 p-3 overflow-y-auto space-y-2 text-xs flex flex-col">
+                <div class="bg-gray-900/60 p-2 rounded-xl text-gray-300 border border-gray-800 self-start max-w-[85%]">
+                    ¡Hola! Soy el asistente virtual de la comunidad CTCT. Preguntame lo que quieras sobre los comandos, rangos o cómo jugar. 🤖⚽
+                </div>
+            </div>
+            <div class="p-2 border-t border-gray-800 bg-[#06070d] flex gap-2">
+                <input type="text" id="ai-chat-input" placeholder="Escribí tu duda acá..." class="flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-lime-500" onkeypress="handleAIPress(event)">
+                <button onclick="sendAIMessage()" class="bg-lime-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-lime-400"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <button onclick="toggleAIChat()" class="bg-gradient-to-r from-lime-600 to-green-500 text-black font-black px-4 py-3 rounded-full flex items-center gap-2 shadow-lg shadow-lime-900/30 hover:scale-105 transition transform">
+            <i class="fa-solid fa-robot text-lg animate-bounce"></i> ASISTENTE IA
+        </button>
+    </div>
+
+    <footer class="bg-dark-card border-t border-gray-900 py-4 text-center text-xs text-gray-600 z-10">
+        <p>&copy; 2026 Juegan Todos con CTCT. Desarrollado con Firebase Realtime Sync & AI Assistant.</p>
+    </footer>
+
+    <script>
+        // CONFIGURACIÓN DE FIREBASE (Reemplazá esto con tus credenciales de Firebase Console)
+     const firebaseConfig = {
+  apiKey: "AIzaSyAKjJdbGVZkqMReFp6CUs-28K2VuurVdgY",
+  authDomain: "pagina-de-ctct.firebaseapp.com",
+  databaseURL: "https://pagina-de-ctct-default-rtdb.firebaseio.com",
+  projectId: "pagina-de-ctct",
+  storageBucket: "pagina-de-ctct.firebasestorage.app",
+  messagingSenderId: "417882443346",
+  appId: "1:417882443346:web:1b9cb6ec36cda8c2c8598b"
+};
+
+
+        if(firebaseConfig.apiKey !== "TU_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+
+            // Sincronización de Estado e Info de Sala
+            db.ref("sala_info").on("value", (snapshot) => {
+                const data = snapshot.val();
+                const badge = document.getElementById("room-status-badge");
+                const matchBox = document.getElementById("live-match-box");
+                if (data && data.online) {
+                    badge.className = "flex items-center gap-2 bg-lime-950/40 text-lime-400 border border-lime-800 px-4 py-1.5 rounded-full text-sm font-bold shadow-[0_0_10px_rgba(127,255,0,0.1)]";
+                    badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-lime-500 shadow-[0_0_8px_#7FFF00]"></span> ONLINE (${data.jugadores || 0} p)`;
+                    if(data.partidoActivo) {
+                        matchBox.innerHTML = `
+                            <p class="text-lime-400 text-xs font-bold uppercase tracking-widest mb-2"><i class="fa-solid fa-circle text-red-500 text-[8px] mr-1 animate-pulse"></i> En juego (${data.tiempoJuego || '00:00'})</p>
+                            <div class="flex items-center justify-center gap-6 font-black text-3xl">
+                                <span class="text-red-500">${data.golesRed || 0}</span>
+                                <span class="bg-gray-900 border border-gray-800 px-4 py-1.5 rounded-xl text-sm text-gray-400 font-mono">VS</span>
+                                <span class="text-blue-500">${data.golesBlue || 0}</span>
+                            </div>
+                        `;
+                    } else {
+                        matchBox.innerHTML = `<p class="text-gray-400 text-sm italic py-4">Esperando que inicie el partido...</p>`;
+                    }
+                } else {
+                    badge.className = "flex items-center gap-2 bg-red-950/40 text-red-400 border border-red-800 px-4 py-1.5 rounded-full text-sm font-bold animate-pulse";
+                    badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> OFFLINE`;
+                    matchBox.innerHTML = `<p class="text-gray-500 text-sm italic py-4">No hay ningún partido activo en este momento</p>`;
+                }
+            });
+
+            // Sincronización de Ranking Global
+            db.ref("usuarios").orderByChild("elo").limitToLast(30).on("value", (snapshot) => {
+                const tbody = document.getElementById("leaderboard-body");
+                tbody.innerHTML = "";
+                let index = 1; let arr = [];
+                snapshot.forEach((child) => { arr.push({nombre: child.key, ...child.val()}); });
+                arr.reverse();
+                if(arr.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500">Sin estadísticas aún.</td></tr>`;
+                    return;
+                }
+                arr.forEach((jugador) => {
+                    let corona = index === 1 ? "🥇 " : index === 2 ? "🥈 " : index === 3 ? "🥉 " : "";
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-900/40 transition">
+                            <td class="py-2.5 font-bold text-gray-500 text-xs">${corona || index}</td>
+                            <td class="py-2.5 font-semibold text-white">${jugador.nombre}</td>
+                            <td class="py-2.5 text-right font-mono font-bold text-lime-400">${jugador.elo || 1000}</td>
+                            <td class="py-2.5 text-right text-gray-400 font-mono">${jugador.goles || 0}</td>
+                        </tr>`;
+                    index++;
+                });
+            });
+
+            // Sincronización de Mensajes del Chat en Vivo
+            db.ref("chat_live").limitToLast(15).on("value", (snapshot) => {
+                const chatContainer = document.getElementById("chat-messages");
+                chatContainer.innerHTML = ""; let count = 0;
+                snapshot.forEach((child) => {
+                    const msg = child.val();
+                    let colorNick = msg.team === 1 ? "text-red-400 font-bold" : msg.team === 2 ? "text-blue-400 font-bold" : "text-gray-300";
+                    chatContainer.innerHTML += `
+                        <div class="bg-gray-900/30 p-2 rounded-xl border border-gray-900/50 flex flex-col gap-0.5">
+                            <span class="text-[10px] text-gray-600 font-mono">${msg.hora || ''}</span>
+                            <p class="text-gray-300"><span class="${colorNick}">${msg.usuario}</span>: ${msg.texto}</p>
+                        </div>`;
+                    count++;
+                });
+                if(count > 0) chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        // ================= INTERRUPTOR Y LÓGICA DE IA WIDGET =================
+        function toggleAIChat() {
+            const win = document.getElementById("ai-chat-window");
+            win.classList.toggle("hidden");
+            if(!win.classList.contains("hidden")) document.getElementById("ai-chat-input").focus();
+        }
+
+        function handleAIPress(e) { if(e.key === 'Enter') sendAIMessage(); }
+
+        function sendAIMessage() {
+            const input = document.getElementById("ai-chat-input");
+            const text = input.value.trim();
+            if(!text) return;
+
+            const body = document.getElementById("ai-chat-body");
+            // Mensaje de usuario
+            body.innerHTML += `<div class="bg-lime-500 text-black p-2 rounded-xl self-end max-w-[85%] font-semibold">${text}</div>`;
+            input.value = "";
+            body.scrollTop = body.scrollHeight;
+
+            // Procesamiento de respuestas automáticas inteligentes locales (Sin gastar saldo de APIs)
+            setTimeout(() => {
+                let reply = "No entendí muy bien tu pregunta, amigo. Podés consultar la lista de comandos escribiendo 'comandos' o entrar al Discord oficial para hablar con los admins reales.";
+                const txt = text.toLowerCase();
+
+                if(txt.includes("hola") || txt.includes("buenas")) {
+                    reply = "¡Hola, nene! ¿Todo bien? Preguntame lo que quieras sobre la sala de Haxball CTCT.";
+                } else if(txt.includes("comando") || txt.includes("!")) {
+                    reply = "Los comandos principales en el chat de juego son:<br>• <b>!register [pass]</b> (Para registrarte)<br>• <b>!login [pass]</b> (Iniciar sesión)<br>• <b>!stats</b> (Ver tus goles/ELO)<br>• <b>!afk</b> y <b>!back</b><br>• <b>!power [fuerza]</b> (Pateo cargado)";
+                } else if(txt.includes("vip") || txt.includes("mbappe")) {
+                    reply = "El rango <b>VIP</b> te da acceso al comando de velocidad turbo <b>!mbappe</b>, cambiar el tamaño de tu jugador con <b>!size</b>, colores custom de chat y festejos con luces. Pedile tu rango a los administradores en el Discord.";
+                } else if(txt.includes("discord") || txt.includes("link") || txt.includes("unirme")) {
+                    reply = "Nuestro Discord oficial y permanente es: <a href='https://discord.gg/tW8fdYSrjY' target='_blank' class='text-lime-400 underline font-bold'>https://discord.gg/tW8fdYSrjY</a>. ¡Te esperamos ahí!";
+                } else if(txt.includes("admin") || txt.includes("dueño") || txt.includes("ttf")) {
+                    reply = "El creador y administrador supremo de la sala es <b>TTF</b>. El bot oficial en sala se llama <b>Cristo jr (BOT)</b>.";
+                } else if(txt.includes("error") || txt.includes("no puedo entrar") || txt.includes("pass")) {
+                    reply = "Si te olvidaste tu contraseña o te da error al ingresar, entrá al canal de soporte de Discord y tirale un mensaje a un administrador para que te resetee la cuenta.";
+                }
+
+                body.innerHTML += `<div class="bg-gray-900/60 p-2 rounded-xl text-gray-300 border border-gray-800 self-start max-w-[85%]">${reply}</div>`;
+                body.scrollTop = body.scrollHeight;
+            }, 600);
+        }
+    </script>
+</body>
+</html>
